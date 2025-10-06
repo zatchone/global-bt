@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { CheckCircle, TrendingUp, Globe, Zap, ArrowLeft } from 'lucide-react';
+import { PayPalScriptProvider, PayPalButtons } from '@paypal/react-paypal-js';
 
 const PricingPage = () => {
   const router = useRouter();
@@ -96,7 +97,12 @@ const PricingPage = () => {
   ];
 
   return (
-    <div className="relative min-h-screen bg-black overflow-hidden">
+    <PayPalScriptProvider options={{
+      clientId: process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID || 'AfMussCgZ6CsbBOvqUQJWPMpC42pPDX4A8yqu1g93h9Drapfb9laE9l8yO2QNe-WdiSVT0W9jSrJFev1',
+      currency: 'USD',
+      intent: 'capture'
+    }}>
+      <div className="relative min-h-screen bg-black overflow-hidden">
       {/* Background Video */}
       <div className="absolute inset-0 z-0">
         <video
@@ -209,9 +215,42 @@ const PricingPage = () => {
                   <div className="text-sm text-emerald-400">{plan.marketValidation}</div>
                 </div>
 
-                <button className={`w-full py-3 bg-gradient-to-r ${plan.gradient} rounded-xl font-bold text-white hover:opacity-90 transition-opacity`}>
-                  Start {plan.name} Plan
-                </button>
+                <div className="min-h-[60px]">
+                  <PayPalButtons
+                    style={{
+                      layout: 'vertical',
+                      color: 'blue',
+                      shape: 'rect',
+                      height: 40
+                    }}
+                    createOrder={(data, actions) => {
+                      const prices = {
+                        starter: '99.00',
+                        professional: '299.00',
+                        enterprise: '999.00'
+                      };
+                      return actions.order.create({
+                        purchase_units: [{
+                          amount: {
+                            value: prices[plan.id as keyof typeof prices],
+                            currency_code: 'USD'
+                          },
+                          description: `BlockTrace ${plan.name} Plan - Monthly Subscription`
+                        }]
+                      });
+                    }}
+                    onApprove={(data, actions) => {
+                      return actions.order!.capture().then(() => {
+                        alert(`Payment successful! Welcome to ${plan.name} plan!`);
+                        console.log('Order ID:', data.orderID);
+                      });
+                    }}
+                    onError={(err) => {
+                      console.error('PayPal error:', err);
+                      alert('Payment failed. Please try again.');
+                    }}
+                  />
+                </div>
               </div>
             ))}
           </div>
@@ -341,7 +380,8 @@ const PricingPage = () => {
           <p>&copy; 2025 BlockTrace. Built with ❤️ on the Internet Computer Protocol.</p>
         </div>
       </div>
-    </div>
+      </div>
+    </PayPalScriptProvider>
   );
 };
 
