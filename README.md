@@ -10,10 +10,17 @@
 - HTTP outcalls, advanced timers, t-ECDSA integration
 - Professional analytics dashboard with PDF export
 - All 6 frontend pages with responsive design
+- **🆕 QR Code Generation**: Mobile-friendly product tracking via QR codes
+- **🆕 PayPal Payment Integration**: Live payment processing for subscription plans
 
 ### ⚠️ **Known Limitation:**
 - **NFT Digital Passports**: Not deployed due to cycles constraints during hackathon
 - Core supply chain functionality is fully operational
+
+### 🆕 **Latest Updates:**
+- **QR Code Feature**: Generate QR codes for mobile product tracking
+- **PayPal Integration**: Live payment processing in pricing section
+- **Mobile Optimization**: Enhanced responsive design for mobile users
 
 
 **🏆 WCHL25 Hackathon Entry**  
@@ -220,12 +227,22 @@ npm install
 cp .env.example .env.local
 ```
 
-4. **Start Frontend**
+4. **Configure PayPal (Optional)**
+```bash
+# Copy environment template
+cp src/blocktrace-frontend-main/.env.example src/blocktrace-frontend-main/.env.local
+
+# Add your PayPal credentials to .env.local:
+# NEXT_PUBLIC_PAYPAL_CLIENT_ID=your_paypal_client_id
+# PAYPAL_CLIENT_SECRET=your_paypal_secret
+```
+
+5. **Start Frontend**
 ```bash
 npm run dev
 ```
 
-5. **Access Application**
+6. **Access Application**
 - **Frontend**: http://localhost:3000
 - **Supply Chain Canister**: `dfx canister id blocktrace_backend`
 - **NFT Canister**: `dfx canister id nft_backend`
@@ -233,8 +250,10 @@ npm run dev
 ### Demo Walkthrough
 1. **Add Supply Chain Step**: Navigate to `/add-step` → Fill product details → Enable NFT minting
 2. **Track Product**: Go to `/track` → Enter product ID → View timeline and ESG metrics
-3. **View Digital Passport**: Click "View Digital Passport" → See ESG badge → Download PDF certificate
-4. **ESG Analytics**: Explore real-time carbon footprint and sustainability scoring
+3. **Generate QR Code**: Click "📱 View QR Code" → Scan with mobile device for instant tracking
+4. **View Digital Passport**: Click "View Digital Passport" → See ESG badge → Download PDF certificate
+5. **ESG Analytics**: Explore real-time carbon footprint and sustainability scoring
+6. **Payment Integration**: Visit `/pricing` → Select plan → Complete PayPal payment
 
 ## 💰 Business Model & Revenue Streams
 
