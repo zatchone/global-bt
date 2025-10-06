@@ -223,7 +223,7 @@ const PricingPage = () => {
                       shape: 'rect',
                       height: 40
                     }}
-                    createOrder={(data, actions) => {
+                    createOrder={(data: any, actions: any) => {
                       const prices = {
                         starter: '99.00',
                         professional: '299.00',
@@ -239,13 +239,13 @@ const PricingPage = () => {
                         }]
                       });
                     }}
-                    onApprove={(data, actions) => {
+                    onApprove={(data: any, actions: any) => {
                       return actions.order!.capture().then(() => {
                         alert(`Payment successful! Welcome to ${plan.name} plan!`);
                         console.log('Order ID:', data.orderID);
                       });
                     }}
-                    onError={(err) => {
+                    onError={(err: any) => {
                       console.error('PayPal error:', err);
                       alert('Payment failed. Please try again.');
                     }}
