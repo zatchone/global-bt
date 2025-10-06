@@ -1,6 +1,7 @@
 // hooks/useICP.ts
 import { useState, useEffect, useCallback } from 'react';
 import { icpService, Step, AddStepResult, ESGScore } from '../lib/icp-service';
+import { getUserProfile } from '../lib/auth';
 
 export interface UseICPReturn {
   isConnected: boolean;
@@ -100,8 +101,11 @@ export const useICP = (): UseICPReturn => {
     location: string;
     notes: string | null;
   }): Promise<AddStepResult> => {
+    const userProfile = await getUserProfile();
+    if (!userProfile.isAuthenticated) return { Err: 'Not authenticated' };
+    
     const result = await handleAsync(
-      () => icpService.addStep(stepData),
+      () => icpService.addStep(stepData, userProfile.principal),
       (result) => {
         if (result.Ok) {
           // Refresh products, total steps, and ESG scores after successful addition
@@ -114,10 +118,13 @@ export const useICP = (): UseICPReturn => {
     return result || { Err: 'Failed to add step' };
   }, [handleAsync]);
 
-  // Get all products
+  // Get user products
   const getAllProducts = useCallback(async (): Promise<string[]> => {
+    const userProfile = await getUserProfile();
+    if (!userProfile.isAuthenticated) return [];
+    
     const result = await handleAsync(
-      () => icpService.getAllProducts(),
+      () => icpService.getUserProducts(userProfile.principal),
       (products) => setProducts(products)
     );
     return result || [];
@@ -125,8 +132,11 @@ export const useICP = (): UseICPReturn => {
 
   // Get product history
   const getProductHistory = useCallback(async (productId: string): Promise<Step[]> => {
+    const userProfile = await getUserProfile();
+    if (!userProfile.isAuthenticated) return [];
+    
     const result = await handleAsync(
-      () => icpService.getProductHistory(productId)
+      () => icpService.getProductHistory(productId, userProfile.principal)
     );
     return result || [];
   }, [handleAsync]);
@@ -151,15 +161,21 @@ export const useICP = (): UseICPReturn => {
 
   // ESG Methods
   const calculateESGScore = useCallback(async (productId: string): Promise<ESGScore | null> => {
+    const userProfile = await getUserProfile();
+    if (!userProfile.isAuthenticated) return null;
+    
     const result = await handleAsync(
-      () => icpService.calculateESGScore(productId)
+      () => icpService.calculateESGScore(productId, userProfile.principal)
     );
     return result || null;
   }, [handleAsync]);
 
   const getAllESGScores = useCallback(async (): Promise<ESGScore[]> => {
+    const userProfile = await getUserProfile();
+    if (!userProfile.isAuthenticated) return [];
+    
     const result = await handleAsync(
-      () => icpService.getAllESGScores(),
+      () => icpService.getUserESGScores(userProfile.principal),
       (scores) => setEsgScores(scores)
     );
     return result || [];

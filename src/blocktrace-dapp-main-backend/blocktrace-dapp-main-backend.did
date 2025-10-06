@@ -1,14 +1,18 @@
 type AddStepResult = variant { Ok : text; Err : text };
-type CrossChainProof = record {
-  chain_signature : text;
+type AutomatedESGUpdate = record {
   product_id : text;
+  old_score : nat8;
+  trigger_reason : text;
+  timestamp : nat64;
+  new_score : nat8;
+};
+type CrossChainProof = record {
+  ecdsa_signature : blob;
+  product_id : text;
+  public_key : blob;
+  chain_id : text;
   proof_hash : text;
   timestamp : nat64;
-};
-type SupplierVerification = record {
-  last_updated : nat64;
-  supplier_id : text;
-  verification_status : text;
 };
 type ESGScore = record {
   co2_saved_vs_traditional : float64;
@@ -19,6 +23,15 @@ type ESGScore = record {
   carbon_footprint_kg : float64;
   impact_message : text;
 };
+type HttpHeader = record { value : text; name : text };
+type HttpResponse = record {
+  status : nat;
+  body : blob;
+  headers : vec HttpHeader;
+};
+type Result = variant { Ok : float64; Err : text };
+type Result_1 = variant { Ok : CrossChainProof; Err : text };
+type Result_2 = variant { Ok : SupplierVerification; Err : text };
 type Step = record {
   batch_number : opt text;
   status : opt text;
@@ -31,6 +44,7 @@ type Step = record {
   certification_hash : opt text;
   quality_score : opt nat8;
   blockchain_hash : opt text;
+  user_id : text;
   gps_latitude : opt float64;
   humidity_percent : opt float64;
   notes : opt text;
@@ -43,25 +57,41 @@ type Step = record {
   transport_mode : opt text;
   actor_name : text;
 };
+type SupplierVerification = record {
+  supplier_id : text;
+  compliance_score : nat8;
+  api_source : text;
+  last_updated : nat64;
+  verification_status : text;
+  certifications : vec text;
+};
+type TransformArgs = record { context : blob; response : HttpResponse };
 service : () -> {
-  add_step : (Step) -> (AddStepResult);
-  calculate_esg_score : (text) -> (opt ESGScore) query;
-  cancel_esg_timer : (text) -> (variant { Err : text; Ok : text });
-  generate_cross_chain_proof : (text) -> (
-      variant { Err : text; Ok : CrossChainProof },
-    );
-  get_all_esg_scores : () -> (vec ESGScore) query;
-  get_all_products : () -> (vec text) query;
+  add_step : (Step, text) -> (AddStepResult);
+  calculate_esg_score : (text, text) -> (opt ESGScore) query;
+  cancel_esg_timer : (text) -> (AddStepResult);
+  create_bitcoin_anchor : (text) -> (AddStepResult);
+  fetch_real_time_carbon_data : (text, float64) -> (Result);
+  generate_cross_chain_proof : (text, text) -> (Result_1);
+  get_active_timers : () -> (vec text) query;
+  get_advanced_features_status : () -> (vec record { text; text }) query;
+  get_all_cross_chain_proofs : () -> (
+      vec record { text; CrossChainProof },
+    ) query;
+  get_automated_esg_updates : () -> (vec AutomatedESGUpdate) query;
   get_canister_info : () -> (text) query;
   get_cross_chain_proof : (text) -> (opt CrossChainProof) query;
-  get_product_history : (text) -> (vec Step) query;
+  get_ecdsa_public_key : () -> (opt blob) query;
+  get_product_history : (text, text) -> (vec Step) query;
   get_supplier_verification : (text) -> (opt SupplierVerification) query;
   get_total_steps_count : () -> (nat64) query;
-  schedule_esg_recalculation : (text, nat64) -> (
-      variant { Err : text; Ok : text },
-    );
-  verify_cross_chain_signature : (text, text) -> (bool) query;
-  verify_supplier_with_api : (text) -> (
-      variant { Err : text; Ok : SupplierVerification },
-    );
+  get_user_esg_scores : (text) -> (vec ESGScore) query;
+  get_user_products : (text) -> (vec text) query;
+  schedule_esg_recalculation : (text, nat64) -> (AddStepResult);
+  schedule_global_esg_monitoring : (nat64) -> (AddStepResult);
+  transform_carbon_response : (TransformArgs) -> (HttpResponse) query;
+  transform_supplier_response : (TransformArgs) -> (HttpResponse) query;
+  verify_cross_chain_proof_on_ethereum : (text) -> (AddStepResult);
+  verify_cross_chain_signature : (text, blob) -> (bool) query;
+  verify_supplier_with_api : (text, opt text) -> (Result_2);
 }

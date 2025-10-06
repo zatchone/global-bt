@@ -4,28 +4,30 @@
 - **🔗 Live App**: https://s5xet-dqaaa-aaaam-qd4gq-cai.icp0.io/
 - **🔧 Backend API**: https://a4gq6-oaaaa-aaaab-qaa4q-cai.raw.icp0.io/?id=s2wch-oiaaa-aaaam-qd4ga-cai
 
-### ✅ **Working Features:**
+### ✅ **Production Ready Features:**
+- **Multi-Tenant Architecture**: Complete user data isolation
+- **Legal Compliance**: GDPR-compliant Terms of Service & Privacy Policy
+- **Customer Support**: Contact form, FAQ, and documentation system
 - Supply chain tracking with blockchain records
 - Real-time ESG scoring and carbon footprint calculation
 - HTTP outcalls, advanced timers, t-ECDSA integration
 - Professional analytics dashboard with PDF export
-- All 6 frontend pages with responsive design
 - **🆕 QR Code Generation**: Mobile-friendly product tracking via QR codes
 - **🆕 PayPal Payment Integration**: Live payment processing for subscription plans
 
-### ⚠️ **Known Limitation:**
-- **NFT Digital Passports**: Not deployed due to cycles constraints during hackathon
-- Core supply chain functionality is fully operational
-
 ### 🆕 **Latest Updates:**
+- **Multi-Tenancy**: Each user has isolated data workspace
+- **Legal Pages**: Terms of Service, Privacy Policy, Customer Support
 - **QR Code Feature**: Generate QR codes for mobile product tracking
 - **PayPal Integration**: Live payment processing in pricing section
-- **Mobile Optimization**: Enhanced responsive design for mobile users
 
 
-**🏆 WCHL25 Hackathon Entry**  
-**Domain:** RWA – Real-World Assets  
-**Tagline:** Tamper-proof supply chain visibility with ESG scoring and consumer trust passports — all on the Internet Computer.
+**🏆 Production-Ready SaaS Platform**  
+**Domain:** Supply Chain Transparency & ESG Tracking  
+**Tagline:** Multi-tenant blockchain supply chain platform with complete data isolation — built on Internet Computer Protocol.
+
+**📧 Contact:** theobsydeon@gmail.com  
+**📍 Location:** New Delhi, India
 
 ## 📋 Table of Contents
 - [Introduction](#introduction)
@@ -404,9 +406,10 @@ npm run dev
 ## 🔧 ICP Features Used
 
 ### **Core ICP Technologies**
+- **Multi-Tenant Architecture**: Complete user data isolation with principal-based filtering
 - **Multi-Canister Architecture**: Separate supply chain and NFT logic for scalability
 - **Candid Interface**: Type-safe communication between frontend and canisters
-- **Internet Identity**: Decentralized authentication (implemented but optional)
+- **Internet Identity & Plug Wallet**: Decentralized authentication options
 - **Reverse Gas Model**: Cost-effective for high-volume supply chain transactions
 - **Query vs Update Calls**: Optimized for real-time ESG calculations
 
@@ -522,9 +525,11 @@ dfx canister id blocktrace_frontend
 ✅ **Professional Quality**: Enterprise-grade UI/UX and technical implementation  
 ✅ **ICP Integration**: Leverages multiple ICP features for optimal performance  
 
-**Built with ❤️ on the Internet Computer Protocol for WCHL25**
+**Built with ❤️ on the Internet Computer Protocol**
 
-*"Making supply chain transparency programmable, one block at a time."*
+*"Production-ready multi-tenant supply chain transparency platform."*
+
+**Contact:** theobsydeon@gmail.com | **Location:** New Delhi, India
 
 ## 🎆 Professional Pages
 

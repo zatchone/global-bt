@@ -13,6 +13,7 @@ export interface ESGScore {
 }
 
 export type Step = {
+  user_id: string;
   product_id: string;
   actor_name: string;
   role: string;
@@ -44,17 +45,18 @@ export type AddStepResult = {
 };
 
 type BlockTraceService = {
-  add_step: (step: Step) => Promise<AddStepResult>;
-  get_product_history: (productId: string) => Promise<Step[]>;
-  get_all_products: () => Promise<string[]>;
+  add_step: (step: Step, caller_principal: string) => Promise<AddStepResult>;
+  get_product_history: (productId: string, caller_principal: string) => Promise<Step[]>;
+  get_user_products: (caller_principal: string) => Promise<string[]>;
   get_total_steps_count: () => Promise<bigint>;
   get_canister_info: () => Promise<string>;
-  calculate_esg_score: (productId: string) => Promise<[] | [ESGScore]>;
-  get_all_esg_scores: () => Promise<ESGScore[]>;
+  calculate_esg_score: (productId: string, caller_principal: string) => Promise<[] | [ESGScore]>;
+  get_user_esg_scores: (caller_principal: string) => Promise<ESGScore[]>;
 };
 
 export const idlFactory = ({ IDL }: any) => {
   const Step = IDL.Record({
+    'user_id': IDL.Text,
     'product_id': IDL.Text,
     'actor_name': IDL.Text,
     'role': IDL.Text,
@@ -96,13 +98,13 @@ export const idlFactory = ({ IDL }: any) => {
   });
 
   return IDL.Service({
-    'add_step': IDL.Func([Step], [AddStepResult], []),
-    'get_product_history': IDL.Func([IDL.Text], [IDL.Vec(Step)], ['query']),
-    'get_all_products': IDL.Func([], [IDL.Vec(IDL.Text)], ['query']),
+    'add_step': IDL.Func([Step, IDL.Text], [AddStepResult], []),
+    'get_product_history': IDL.Func([IDL.Text, IDL.Text], [IDL.Vec(Step)], ['query']),
+    'get_user_products': IDL.Func([IDL.Text], [IDL.Vec(IDL.Text)], ['query']),
     'get_total_steps_count': IDL.Func([], [IDL.Nat64], ['query']),
     'get_canister_info': IDL.Func([], [IDL.Text], ['query']),
-    'calculate_esg_score': IDL.Func([IDL.Text], [IDL.Opt(ESGScore)], ['query']),
-    'get_all_esg_scores': IDL.Func([], [IDL.Vec(ESGScore)], ['query']),
+    'calculate_esg_score': IDL.Func([IDL.Text, IDL.Text], [IDL.Opt(ESGScore)], ['query']),
+    'get_user_esg_scores': IDL.Func([IDL.Text], [IDL.Vec(ESGScore)], ['query']),
   });
 };
 
@@ -181,11 +183,11 @@ class ICPService {
     }
   }
 
-  async calculateESGScore(productId: string): Promise<ESGScore | null> {
+  async calculateESGScore(productId: string, userPrincipal: string): Promise<ESGScore | null> {
     await this.ensureConnected();
     
     try {
-      const result = await this.actor!.calculate_esg_score(productId);
+      const result = await this.actor!.calculate_esg_score(productId, userPrincipal);
       if (Array.isArray(result) && result.length > 0) {
         return result[0] ?? null;
       }
@@ -196,14 +198,14 @@ class ICPService {
     }
   }
 
-  async getAllESGScores(): Promise<ESGScore[]> {
+  async getUserESGScores(userPrincipal: string): Promise<ESGScore[]> {
     await this.ensureConnected();
     
     try {
-      const result = await this.actor!.get_all_esg_scores();
+      const result = await this.actor!.get_user_esg_scores(userPrincipal);
       return result || [];
     } catch (error) {
-      console.error('Error getting all ESG scores:', error);
+      console.error('Error getting user ESG scores:', error);
       throw error;
     }
   }
@@ -229,10 +231,11 @@ class ICPService {
     distance_km?: number;
     cost_usd?: number;
     blockchain_hash?: string;
-  }): Promise<AddStepResult> {
+  }, userPrincipal: string): Promise<AddStepResult> {
     await this.ensureConnected();
     
     const step: Step = {
+      user_id: userPrincipal,
       product_id: data.product_id,
       actor_name: data.actor_name,
       role: data.role,
@@ -259,19 +262,19 @@ class ICPService {
     };
     
     console.log("Sending enhanced step to backend:", step);
-    const result = await this.actor!.add_step(step);
+    const result = await this.actor!.add_step(step, userPrincipal);
     console.log("Enhanced backend response:", result);
     return result;
   }
 
-  async getAllProducts(): Promise<string[]> {
+  async getUserProducts(userPrincipal: string): Promise<string[]> {
     await this.ensureConnected();
-    return await this.actor!.get_all_products();
+    return await this.actor!.get_user_products(userPrincipal);
   }
 
-  async getProductHistory(productId: string): Promise<Step[]> {
+  async getProductHistory(productId: string, userPrincipal: string): Promise<Step[]> {
     await this.ensureConnected();
-    return await this.actor!.get_product_history(productId);
+    return await this.actor!.get_product_history(productId, userPrincipal);
   }
 
   async getTotalStepsCount(): Promise<bigint> {

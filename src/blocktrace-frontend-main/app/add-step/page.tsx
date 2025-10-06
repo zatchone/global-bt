@@ -36,6 +36,7 @@ import {
   Lock,
 } from "lucide-react";
 import { icpService } from "@/lib/icp-service";
+import { getUserProfile } from "@/lib/auth";
 
 interface EnhancedFormData {
   // Basic fields
@@ -244,6 +245,12 @@ export default function AddStepPage() {
     setSuccessMessage(null);
     setErrorMessage(null);
 
+    // Check authentication first
+    const userProfile = await getUserProfile();
+    if (!userProfile.isAuthenticated) {
+      return setErrorMessage("❗ Please login to add supply chain steps");
+    }
+
     if (!formData.acceptTerms)
       return setErrorMessage("❗ Accept terms to continue");
     if (
@@ -280,7 +287,7 @@ export default function AddStepPage() {
         distance_km: formData.distanceKm ? parseFloat(formData.distanceKm) : undefined,
         cost_usd: formData.costUsd ? parseFloat(formData.costUsd) : undefined,
         blockchain_hash: formData.blockchainHash || undefined,
-      });
+      }, userProfile.principal);
       if ("Ok" in res) {
         // Optional: Mint NFT (but don't redirect)
         let successMsg = "✅ Step successfully added to blockchain!";

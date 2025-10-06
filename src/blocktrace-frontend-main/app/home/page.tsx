@@ -123,10 +123,10 @@ const Home = () => {
       try {
         console.log('🔗 Loading real-time blockchain metrics...');
         
-        const [allProducts, totalSteps, esgScores] = await Promise.all([
-          icpService.getAllProducts(),
+        const [userProducts, totalSteps, esgScores] = await Promise.all([
+          icpService.getUserProducts(userProfile.principal),
           icpService.getTotalStepsCount(),
-          icpService.getAllESGScores()
+          icpService.getUserESGScores(userProfile.principal)
         ]);
 
         let totalCarbonSaved = 0;
@@ -150,9 +150,9 @@ const Home = () => {
         }
 
         // Process individual product histories for detailed metrics
-        for (const productId of allProducts) {
+        for (const productId of userProducts) {
           try {
-            const steps = await icpService.getProductHistory(productId);
+            const steps = await icpService.getProductHistory(productId, userProfile.principal);
             for (const step of steps) {
               // Count verified steps
               if (Array.isArray(step.status) && step.status.length > 0 && step.status[0] === 'verified') {
@@ -189,7 +189,7 @@ const Home = () => {
         const avgTemperature = temperatureCount > 0 ? Math.round((totalTemperature / temperatureCount) * 10) / 10 : 0;
 
         setRealTimeMetrics({
-          totalProducts: allProducts.length,
+          totalProducts: userProducts.length,
           totalSteps: Number(totalSteps),
           totalCarbonSaved: Math.round(totalCarbonSaved * 100) / 100,
           totalDistance: Math.round(totalDistance),
@@ -200,7 +200,7 @@ const Home = () => {
           totalCost: Math.round(totalCost * 100) / 100,
           avgTemperature,
           blockchainTransactions,
-          realTimeUpdates: allProducts.length + Number(totalSteps) + esgScores.length
+          realTimeUpdates: userProducts.length + Number(totalSteps) + esgScores.length
         });
 
         setLastUpdated(new Date());
@@ -221,16 +221,16 @@ const Home = () => {
     const interval = setInterval(async () => {
       if (userProfile && !metricsLoading) {
         try {
-          const [allProducts, totalSteps, esgScores] = await Promise.all([
-            icpService.getAllProducts(),
+          const [userProducts, totalSteps, esgScores] = await Promise.all([
+            icpService.getUserProducts(userProfile.principal),
             icpService.getTotalStepsCount(),
-            icpService.getAllESGScores()
+            icpService.getUserESGScores(userProfile.principal)
           ]);
           
           // Quick update without full recalculation
           setRealTimeMetrics(prev => ({
             ...prev,
-            totalProducts: allProducts.length,
+            totalProducts: userProducts.length,
             totalSteps: Number(totalSteps),
             realTimeUpdates: prev.realTimeUpdates + 1
           }));
@@ -259,10 +259,10 @@ const Home = () => {
     setMetricsError('');
     
     try {
-      const [allProducts, totalSteps, esgScores] = await Promise.all([
-        icpService.getAllProducts(),
+      const [userProducts, totalSteps, esgScores] = await Promise.all([
+        icpService.getUserProducts(userProfile.principal),
         icpService.getTotalStepsCount(),
-        icpService.getAllESGScores()
+        icpService.getUserESGScores(userProfile.principal)
       ]);
 
       // Recalculate all metrics
@@ -280,7 +280,7 @@ const Home = () => {
 
       setRealTimeMetrics(prev => ({
         ...prev,
-        totalProducts: allProducts.length,
+        totalProducts: userProducts.length,
         totalSteps: Number(totalSteps),
         totalCarbonSaved: Math.round(totalCarbonSaved * 100) / 100,
         totalDistance: Math.round(totalDistance),
@@ -883,9 +883,9 @@ const Home = () => {
                 <div>
                   <h5 className="text-white font-semibold mb-3">🛠️ Support</h5>
                   <ul className="space-y-2 text-gray-400 text-sm">
-                    <li><a href="#" className="hover:text-white transition-colors">❓ Help Center</a></li>
-                    <li><a href="#" className="hover:text-white transition-colors">👥 Community</a></li>
-                    <li><a href="#" className="hover:text-white transition-colors">📧 Contact Us</a></li>
+                    <li><a href="/support" className="hover:text-white transition-colors">❓ Help Center</a></li>
+                    <li><a href="/support" className="hover:text-white transition-colors">👥 Community</a></li>
+                    <li><a href="/support" className="hover:text-white transition-colors">📧 Contact Us</a></li>
                     <li><a href="#" className="hover:text-white transition-colors">📈 System Status</a></li>
                   </ul>
                 </div>
@@ -908,12 +908,12 @@ const Home = () => {
 
               <div className="mt-8 pt-8 border-t border-white/10 flex flex-col md:flex-row justify-between items-center">
                 <div className="text-gray-400 text-sm">
-                  © 2025 BlockTrace Professional. All rights reserved. 🔗 Powered by Internet Computer Protocol (ICP)
+                  © 2025 BlockTrace Professional, New Delhi, India. All rights reserved. 🔗 Powered by Internet Computer Protocol (ICP)
                 </div>
                 <div className="flex space-x-6 mt-4 md:mt-0">
-                  <a href="#" className="text-gray-400 hover:text-white text-sm transition-colors">🔒 Privacy Policy</a>
-                  <a href="#" className="text-gray-400 hover:text-white text-sm transition-colors">📋 Terms of Service</a>
-                  <a href="#" className="text-gray-400 hover:text-white text-sm transition-colors">🍪 Cookie Policy</a>
+                  <a href="/privacy" className="text-gray-400 hover:text-white text-sm transition-colors">🔒 Privacy Policy</a>
+                  <a href="/terms" className="text-gray-400 hover:text-white text-sm transition-colors">📋 Terms of Service</a>
+                  <a href="/support" className="text-gray-400 hover:text-white text-sm transition-colors">💬 Support</a>
                 </div>
               </div>
             </div>

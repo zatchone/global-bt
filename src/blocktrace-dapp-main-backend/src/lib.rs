@@ -11,6 +11,7 @@ use hex;
 
 #[derive(Clone, Debug, CandidType, Deserialize, Serialize)]
 pub struct Step {
+    pub user_id: String,
     pub product_id: String,
     pub actor_name: String,
     pub role: String,
@@ -102,7 +103,8 @@ thread_local! {
 
 #[update]
 #[candid_method(update)]
-fn add_step(mut step: Step) -> AddStepResult {
+fn add_step(mut step: Step, caller_principal: String) -> AddStepResult {
+    step.user_id = caller_principal;
     if step.product_id.trim().is_empty() {
         return AddStepResult::Err("Product ID cannot be empty".to_string());
     }
@@ -141,27 +143,38 @@ fn add_step(mut step: Step) -> AddStepResult {
 
 #[query]
 #[candid_method(query)]
-fn get_product_history(product_id: String) -> Vec<Step> {
+fn get_product_history(product_id: String, caller_principal: String) -> Vec<Step> {
     PRODUCT_HISTORY.with(|store| {
         let mut history = store
             .borrow()
             .get(&product_id)
             .cloned()
-            .unwrap_or_default();
+            .unwrap_or_default()
+            .into_iter()
+            .filter(|step| step.user_id == caller_principal)
+            .collect::<Vec<Step>>();
 
         history.sort_by(|a, b| a.timestamp.cmp(&b.timestamp));
 
-        ic_cdk::println!("Retrieved {} enhanced steps for product: {}", history.len(), product_id);
+        ic_cdk::println!("Retrieved {} enhanced steps for product: {} (user: {})", history.len(), product_id, caller_principal);
         history
     })
 }
 
 #[query]
 #[candid_method(query)]
-fn get_all_products() -> Vec<String> {
+fn get_user_products(caller_principal: String) -> Vec<String> {
     PRODUCT_HISTORY.with(|store| {
-        let products: Vec<String> = store.borrow().keys().cloned().collect();
-        ic_cdk::println!("Retrieved {} products", products.len());
+        let mut user_products = std::collections::HashSet::new();
+        for steps in store.borrow().values() {
+            for step in steps {
+                if step.user_id == caller_principal {
+                    user_products.insert(step.product_id.clone());
+                }
+            }
+        }
+        let products: Vec<String> = user_products.into_iter().collect();
+        ic_cdk::println!("Retrieved {} products for user: {}", products.len(), caller_principal);
         products
     })
 }
@@ -178,9 +191,18 @@ fn get_total_steps_count() -> u64 {
 
 #[query]
 #[candid_method(query)]
-fn calculate_esg_score(product_id: String) -> Option<ESGScore> {
+fn calculate_esg_score(product_id: String, caller_principal: String) -> Option<ESGScore> {
     PRODUCT_HISTORY.with(|store| {
-        let history = store.borrow().get(&product_id).cloned().unwrap_or_default();
+        let history = if caller_principal.is_empty() {
+            // For internal use (timers), get all steps for the product
+            store.borrow().get(&product_id).cloned().unwrap_or_default()
+        } else {
+            // For user queries, filter by user_id
+            store.borrow().get(&product_id).cloned().unwrap_or_default()
+                .into_iter()
+                .filter(|step| step.user_id == caller_principal)
+                .collect::<Vec<Step>>()
+        };
         
         if history.is_empty() {
             return None;
@@ -243,16 +265,15 @@ fn calculate_esg_score(product_id: String) -> Option<ESGScore> {
 
 #[query]
 #[candid_method(query)]
-fn get_all_esg_scores() -> Vec<ESGScore> {
-    PRODUCT_HISTORY.with(|store| {
-        let mut scores = Vec::new();
-        for product_id in store.borrow().keys() {
-            if let Some(score) = calculate_esg_score(product_id.clone()) {
-                scores.push(score);
-            }
+fn get_user_esg_scores(caller_principal: String) -> Vec<ESGScore> {
+    let user_products = get_user_products(caller_principal.clone());
+    let mut scores = Vec::new();
+    for product_id in user_products {
+        if let Some(score) = calculate_esg_score(product_id, caller_principal.clone()) {
+            scores.push(score);
         }
-        scores
-    })
+    }
+    scores
 }
 
 // 🌐 ADVANCED ICP FEATURE 1: HTTP OUTCALLS FOR REAL SUPPLY CHAIN APIS
@@ -439,8 +460,8 @@ fn schedule_esg_recalculation(product_id: String, interval_seconds: u64) -> Resu
     let timer_id = set_timer_interval(Duration::from_secs(interval_seconds), move || {
         let product_id_inner = product_id_clone.clone();
         ic_cdk::spawn(async move {
-            // Get current ESG score
-            let old_score = calculate_esg_score(product_id_inner.clone())
+            // Get current ESG score (using empty principal for internal calculations)
+            let old_score = calculate_esg_score(product_id_inner.clone(), "".to_string())
                 .map(|s| s.sustainability_score)
                 .unwrap_or(0);
             
@@ -461,8 +482,8 @@ fn schedule_esg_recalculation(product_id: String, interval_seconds: u64) -> Resu
                     }
                 }
                 
-                // Recalculate ESG score with updated data
-                let new_score = calculate_esg_score(product_id_inner.clone())
+                // Recalculate ESG score with updated data (using empty principal for internal calculations)
+                let new_score = calculate_esg_score(product_id_inner.clone(), "".to_string())
                     .map(|s| s.sustainability_score)
                     .unwrap_or(0);
                 
@@ -508,7 +529,7 @@ fn schedule_global_esg_monitoring(interval_minutes: u64) -> Result<String, Strin
             let mut updates_count = 0;
             let total_products = all_products.len();
             for product_id in &all_products {
-                if let Some(_current_score) = calculate_esg_score(product_id.clone()) {
+                if let Some(_current_score) = calculate_esg_score(product_id.clone(), "".to_string()) {
                     // Check for supply chain disruptions or improvements
                     let history = PRODUCT_HISTORY.with(|store| {
                         store.borrow().get(product_id).cloned().unwrap_or_default()
@@ -816,7 +837,7 @@ mod tests {
     fn generate_did() {
         let did = export_candid();
         write(
-            "src/blocktrace-dapp-main-backend/blocktrace-dapp-main-backend.did",
+            "blocktrace-dapp-main-backend.did",
             did,
         )
         .expect("Failed to write enhanced .did file");

@@ -50,6 +50,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { icpService, Step } from "@/lib/icp-service";
+import { getUserProfile } from "@/lib/auth";
 import StepMap from "../../components/StepMap";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -180,15 +181,23 @@ export default function EnhancedTrackProductPage() {
       setError("❗ Enter a Product ID");
       return;
     }
+
+    // Check authentication
+    const userProfile = await getUserProfile();
+    if (!userProfile.isAuthenticated) {
+      setError("❗ Please login to track products");
+      return;
+    }
+
     setError("");
     setStatus("");
     setTimeline([]);
     setIsLoading(true);
 
     try {
-      const steps = await icpService.getProductHistory(productId.trim());
+      const steps = await icpService.getProductHistory(productId.trim(), userProfile.principal);
       if (steps.length === 0) {
-        setError("🔍 No history found for this product");
+        setError("🔍 No history found for this product in your account");
       } else {
         const enhancedTimeline = generateEnhancedTimeline(steps);
         setTimeline(enhancedTimeline);
@@ -270,7 +279,10 @@ export default function EnhancedTrackProductPage() {
     // Get real ESG score from ICP backend
     let realESGScore = null;
     try {
-      realESGScore = await icpService.calculateESGScore(productId);
+      const userProfile = await getUserProfile();
+      if (userProfile.isAuthenticated) {
+        realESGScore = await icpService.calculateESGScore(productId, userProfile.principal);
+      }
     } catch (error) {
       console.error('Failed to get ESG score for PDF:', error);
     }
