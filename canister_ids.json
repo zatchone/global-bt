@@ -5,5 +5,7 @@
   "blocktrace_frontend": {
     "ic": "s5xet-dqaaa-aaaam-qd4gq-cai"
   },
-  "nft_backend": {}
+  "nft_backend": {
+    "ic": "mrxkb-rqaaa-aaaam-qd6kq-cai"
+  }
 }

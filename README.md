@@ -3,6 +3,7 @@
 ## 🌐 **LIVE MAINNET DEPLOYMENT**
 - **🔗 Live App**: https://s5xet-dqaaa-aaaam-qd4gq-cai.icp0.io/
 - **🔧 Backend API**: https://a4gq6-oaaaa-aaaab-qaa4q-cai.raw.icp0.io/?id=s2wch-oiaaa-aaaam-qd4ga-cai
+ - **🪪 NFT Canister (Passport / Mint)**: https://a4gq6-oaaaa-aaaab-qaa4q-cai.raw.icp0.io/?id=mrxkb-rqaaa-aaaam-qd6kq-cai
 
 ### ✅ **Production Ready Features:**
 - **Multi-Tenant Architecture**: Complete user data isolation
@@ -11,7 +12,8 @@
 - Supply chain tracking with blockchain records
 - Real-time ESG scoring and carbon footprint calculation
 - HTTP outcalls, advanced timers, t-ECDSA integration
-- Professional analytics dashboard with PDF export
+- Professional analytics dashboard with PDF export 
+Voice of Product using AI, so that a product can tell its story.
 - **🆕 QR Code Generation**: Mobile-friendly product tracking via QR codes
 - **🆕 PayPal Payment Integration**: Live payment processing for subscription plans
 
