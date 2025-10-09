@@ -1,6 +1,7 @@
 // Enhanced icp-service.ts
 import { Actor, HttpAgent } from "@dfinity/agent";
 import { Principal } from "@dfinity/principal";
+import { getUserProfile } from "./auth";
 
 export interface ESGScore {
   product_id: string;
@@ -52,6 +53,7 @@ type BlockTraceService = {
   get_canister_info: () => Promise<string>;
   calculate_esg_score: (productId: string, caller_principal: string) => Promise<[] | [ESGScore]>;
   get_user_esg_scores: (caller_principal: string) => Promise<ESGScore[]>;
+  debug_user_data: (user_principal: string) => Promise<string>;
 };
 
 export const idlFactory = ({ IDL }: any) => {
@@ -105,6 +107,7 @@ export const idlFactory = ({ IDL }: any) => {
     'get_canister_info': IDL.Func([], [IDL.Text], ['query']),
     'calculate_esg_score': IDL.Func([IDL.Text, IDL.Text], [IDL.Opt(ESGScore)], ['query']),
     'get_user_esg_scores': IDL.Func([IDL.Text], [IDL.Vec(ESGScore)], ['query']),
+    'debug_user_data': IDL.Func([IDL.Text], [IDL.Text], ['query']),
   });
 };
 
@@ -130,7 +133,8 @@ class ICPService {
       process.env.NEXT_PUBLIC_CANISTER_ID,
       process.env.CANISTER_ID_BLOCKTRACE_BACKEND,
       process.env.CANISTER_ID,
-      "uxrrr-q7777-77774-qaaaq-cai"
+    // Default to the deployed mainnet backend canister if no env var is provided
+    "s2wch-oiaaa-aaaam-qd4ga-cai"
     ];
 
     for (const canisterId of canisterIdSources) {
@@ -233,9 +237,40 @@ class ICPService {
     blockchain_hash?: string;
   }, userPrincipal: string): Promise<AddStepResult> {
     await this.ensureConnected();
-    
+    // If caller didn't pass a principal, try to resolve it here to avoid orphaned steps.
+    let resolvedPrincipal = userPrincipal && userPrincipal.trim() ? userPrincipal : "";
+    if (!resolvedPrincipal) {
+      try {
+        const profile = await getUserProfile();
+        if (profile && profile.principal) {
+          resolvedPrincipal = profile.principal;
+        }
+      } catch (e) {
+        console.warn('Failed to getUserProfile fallback:', e);
+      }
+    }
+
+    // If still empty, attempt to get principal from Plug Wallet if available
+    if (!resolvedPrincipal && typeof window !== 'undefined') {
+      try {
+        const w = window as any;
+        const plug = w?.ic?.plug;
+        if (plug && plug.agent && typeof plug.agent.getPrincipal === 'function') {
+          const p = await Promise.race([
+            plug.agent.getPrincipal(),
+            new Promise<never>((_, reject) => setTimeout(() => reject(new Error('Plug principal timeout')), 3000))
+          ]);
+          if (p && typeof p.toString === 'function') {
+            resolvedPrincipal = p.toString();
+          }
+        }
+      } catch (e) {
+        console.warn('Plug principal fallback failed:', e);
+      }
+    }
+
     const step: Step = {
-      user_id: userPrincipal,
+      user_id: resolvedPrincipal,
       product_id: data.product_id,
       actor_name: data.actor_name,
       role: data.role,
@@ -262,7 +297,7 @@ class ICPService {
     };
     
     console.log("Sending enhanced step to backend:", step);
-    const result = await this.actor!.add_step(step, userPrincipal);
+    const result = await this.actor!.add_step(step, resolvedPrincipal);
     console.log("Enhanced backend response:", result);
     return result;
   }
@@ -304,6 +339,11 @@ class ICPService {
       canisterId: this.canisterId,
       host: this.host
     };
+  }
+
+  async debugUserData(userPrincipal: string): Promise<string> {
+    await this.ensureConnected();
+    return await this.actor!.debug_user_data(userPrincipal);
   }
 }
 

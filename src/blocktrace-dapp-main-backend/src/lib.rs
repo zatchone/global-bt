@@ -104,7 +104,13 @@ thread_local! {
 #[update]
 #[candid_method(update)]
 fn add_step(mut step: Step, caller_principal: String) -> AddStepResult {
-    step.user_id = caller_principal;
+    // If the frontend didn't supply the caller principal, fall back to the actual caller.
+    let actual_caller = if caller_principal.trim().is_empty() {
+        format!("{}", ic_cdk::caller())
+    } else {
+        caller_principal.clone()
+    };
+    step.user_id = actual_caller;
     if step.product_id.trim().is_empty() {
         return AddStepResult::Err("Product ID cannot be empty".to_string());
     }
@@ -139,6 +145,91 @@ fn add_step(mut step: Step, caller_principal: String) -> AddStepResult {
     });
     ic_cdk::println!("Enhanced step added successfully for product: {}", step.product_id);
     AddStepResult::Ok(format!("Enhanced step added successfully for product {}", step.product_id))
+}
+
+// Admin principal allowed to run destructive migrations on-chain. Change if you want a different admin.
+const ADMIN_PRINCIPAL: &str = "4shqr-ynwgp-frjxc-kckbe-cutkz-wpigo-aa4wb-isbt3-lrqwp-x7xe3-jae";
+
+#[update]
+fn assign_orphan_steps(new_owner: String) -> String {
+    let caller = format!("{}", ic_cdk::caller());
+    if caller != ADMIN_PRINCIPAL {
+        ic_cdk::trap("assign_orphan_steps can only be called by the admin principal");
+    }
+
+    let mut moved_total = 0usize;
+    PRODUCT_HISTORY.with(|store| {
+        let mut map = store.borrow_mut();
+        for (_product_id, steps) in map.iter_mut() {
+            for step in steps.iter_mut() {
+                if step.user_id.trim().is_empty() {
+                    step.user_id = new_owner.clone();
+                    moved_total += 1;
+                }
+            }
+        }
+    });
+
+    let msg = format!("Assigned {} orphan steps to {}", moved_total, new_owner);
+    ic_cdk::println!("{}", msg);
+    msg
+}
+
+#[update]
+fn delete_orphan_steps() -> String {
+    let caller = format!("{}", ic_cdk::caller());
+    if caller != ADMIN_PRINCIPAL {
+        ic_cdk::trap("delete_orphan_steps can only be called by the admin principal");
+    }
+
+    let mut removed_total = 0usize;
+    PRODUCT_HISTORY.with(|store| {
+        let mut map = store.borrow_mut();
+        // Collect keys to update so we can remove empty steps safely
+        for (_product_id, steps) in map.iter_mut() {
+            let before = steps.len();
+            steps.retain(|s| !s.user_id.trim().is_empty());
+            let after = steps.len();
+            removed_total += before.saturating_sub(after);
+        }
+        // Optionally remove products that now have zero steps
+        let empty_keys: Vec<String> = map.iter().filter_map(|(k, v)| if v.is_empty() { Some(k.clone()) } else { None }).collect();
+        for k in empty_keys {
+            map.remove(&k);
+        }
+    });
+
+    let msg = format!("Removed {} orphan steps (and cleaned up empty products)", removed_total);
+    ic_cdk::println!("{}", msg);
+    msg
+}
+
+// Admin utility: delete all steps that belong to a specific owner string (e.g., malformed owner like "1")
+#[update]
+fn delete_steps_by_owner(owner: String) -> String {
+    let caller = format!("{}", ic_cdk::caller());
+    if caller != ADMIN_PRINCIPAL {
+        ic_cdk::trap("delete_steps_by_owner can only be called by the admin principal");
+    }
+
+    let mut removed_total = 0usize;
+    PRODUCT_HISTORY.with(|store| {
+        let mut map = store.borrow_mut();
+        for (_product_id, steps) in map.iter_mut() {
+            let before = steps.len();
+            steps.retain(|s| s.user_id != owner);
+            let after = steps.len();
+            removed_total += before.saturating_sub(after);
+        }
+        let empty_keys: Vec<String> = map.iter().filter_map(|(k, v)| if v.is_empty() { Some(k.clone()) } else { None }).collect();
+        for k in empty_keys {
+            map.remove(&k);
+        }
+    });
+
+    let msg = format!("Removed {} steps owned by '{}'", removed_total, owner);
+    ic_cdk::println!("{}", msg);
+    msg
 }
 
 #[query]
@@ -187,6 +278,64 @@ fn get_total_steps_count() -> u64 {
         ic_cdk::println!("Total enhanced steps count: {}", count);
         count
     })
+}
+
+// Admin/debug query: list all products and their steps (including user_id) for inspection.
+#[query]
+#[candid_method(query)]
+fn list_all_products() -> Vec<(String, Vec<Step>)> {
+    PRODUCT_HISTORY.with(|store| {
+        store.borrow().iter().map(|(k, v)| (k.clone(), v.clone())).collect()
+    })
+}
+
+// Query distinct owners with counts for inspection
+#[query]
+#[candid_method(query)]
+fn list_all_owners() -> Vec<(String, u64)> {
+    use std::collections::HashMap;
+    let mut counts: HashMap<String, u64> = HashMap::new();
+    PRODUCT_HISTORY.with(|store| {
+        for steps in store.borrow().values() {
+            for s in steps.iter() {
+                let key = s.user_id.clone();
+                *counts.entry(key).or_insert(0) += 1;
+            }
+        }
+    });
+    let mut vec: Vec<(String, u64)> = counts.into_iter().collect();
+    // Sort by count desc
+    vec.sort_by(|a, b| b.1.cmp(&a.1));
+    vec
+}
+
+// Admin update: reassign all steps owned by `owner_from` to `owner_to`.
+#[update]
+fn reassign_steps(owner_from: String, owner_to: String) -> String {
+    let caller = format!("{}", ic_cdk::caller());
+    if caller != ADMIN_PRINCIPAL {
+        ic_cdk::trap("reassign_steps can only be called by the admin principal");
+    }
+
+    if owner_from == owner_to {
+        return format!("No-op: owner_from == owner_to ({})", owner_from);
+    }
+
+    let mut moved_total = 0usize;
+    PRODUCT_HISTORY.with(|store| {
+        for (_product_id, steps) in store.borrow_mut().iter_mut() {
+            for s in steps.iter_mut() {
+                if s.user_id == owner_from {
+                    s.user_id = owner_to.clone();
+                    moved_total += 1;
+                }
+            }
+        }
+    });
+
+    let msg = format!("Reassigned {} steps from '{}' to '{}'", moved_total, owner_from, owner_to);
+    ic_cdk::println!("{}", msg);
+    msg
 }
 
 #[query]
@@ -778,6 +927,72 @@ fn get_canister_info() -> String {
     )
 }
 
+// Debug function to clear all data (for testing multi-tenant isolation)
+#[update]
+#[candid_method(update)]
+fn clear_all_data() -> String {
+    let caller = format!("{}", ic_cdk::caller());
+    if caller != ADMIN_PRINCIPAL {
+        ic_cdk::trap("clear_all_data can only be called by the admin principal");
+    }
+
+    let mut product_count = 0;
+    let mut step_count = 0;
+    
+    PRODUCT_HISTORY.with(|store| {
+        let mut map = store.borrow_mut();
+        product_count = map.len();
+        step_count = map.values().map(|v| v.len()).sum::<usize>();
+        map.clear();
+    });
+
+    SUPPLIER_VERIFICATIONS.with(|store| {
+        store.borrow_mut().clear();
+    });
+
+    CROSS_CHAIN_PROOFS.with(|store| {
+        store.borrow_mut().clear();
+    });
+
+    ESG_TIMERS.with(|store| {
+        store.borrow_mut().clear();
+    });
+
+    HTTP_OUTCALL_CACHE.with(|cache| {
+        cache.borrow_mut().clear();
+    });
+
+    AUTOMATED_ESG_UPDATES.with(|updates| {
+        updates.borrow_mut().clear();
+    });
+
+    let msg = format!("Cleared all data: {} products, {} steps", product_count, step_count);
+    ic_cdk::println!("{}", msg);
+    msg
+}
+
+// Debug function to check user-specific data
+#[query]
+#[candid_method(query)]
+fn debug_user_data(user_principal: String) -> String {
+    let user_products = get_user_products(user_principal.clone());
+    let mut total_user_steps = 0;
+    let mut user_products_with_steps = Vec::new();
+    
+    for product_id in &user_products {
+        let steps = get_product_history(product_id.clone(), user_principal.clone());
+        total_user_steps += steps.len();
+        user_products_with_steps.push((product_id.clone(), steps.len()));
+    }
+    
+    let all_owners = list_all_owners();
+    
+    format!(
+        "🔍 User Data Debug for {}\n• User Products: {}\n• Total User Steps: {}\n• Product Details: {:?}\n• All Owners: {:?}",
+        user_principal, user_products.len(), total_user_steps, user_products_with_steps, all_owners
+    )
+}
+
 #[query]
 #[candid_method(query)]
 fn get_advanced_features_status() -> Vec<(String, String)> {
@@ -809,15 +1024,93 @@ fn pre_upgrade() {
 
 #[post_upgrade]
 fn post_upgrade() {
-    let (data,): (HashMap<String, Vec<Step>>,) =
-        ic_cdk::storage::stable_restore().expect("Failed to restore enhanced data after upgrade");
+    // Try restoring using the current Step type first. If that fails (older data without `user_id`),
+    // attempt to restore using a legacy Step struct and convert.
+    let restored: Result<(HashMap<String, Vec<Step>>,), _> = ic_cdk::storage::stable_restore();
 
-    PRODUCT_HISTORY.with(|store| {
-        *store.borrow_mut() = data;
-    });
+    if let Ok((data,)) = restored {
+        PRODUCT_HISTORY.with(|store| {
+            *store.borrow_mut() = data;
+        });
 
-    let product_count = PRODUCT_HISTORY.with(|store| store.borrow().len());
-    ic_cdk::println!("Enhanced BlockTrace backend upgraded - Restored {} products", product_count);
+        let product_count = PRODUCT_HISTORY.with(|store| store.borrow().len());
+        ic_cdk::println!("Enhanced BlockTrace backend upgraded - Restored {} products", product_count);
+        return;
+    }
+
+    // Fallback: older stored Step may have omitted `user_id`. Define a legacy struct for safe decode.
+    #[derive(Clone, Debug, CandidType, Deserialize, Serialize)]
+    struct StepLegacy {
+        pub user_id: Option<String>,
+        pub product_id: String,
+        pub actor_name: String,
+        pub role: String,
+        pub action: String,
+        pub location: String,
+        pub notes: Option<String>,
+        pub timestamp: u64,
+        pub status: Option<String>,
+        pub transport_mode: Option<String>,
+        pub temperature_celsius: Option<f64>,
+        pub humidity_percent: Option<f64>,
+        pub gps_latitude: Option<f64>,
+        pub gps_longitude: Option<f64>,
+        pub batch_number: Option<String>,
+        pub certification_hash: Option<String>,
+        pub estimated_arrival: Option<u64>,
+        pub actual_arrival: Option<u64>,
+        pub quality_score: Option<u8>,
+        pub carbon_footprint_kg: Option<f64>,
+        pub distance_km: Option<f64>,
+        pub cost_usd: Option<f64>,
+        pub blockchain_hash: Option<String>,
+    }
+
+    let legacy_restore: Result<(HashMap<String, Vec<StepLegacy>>,), _> = ic_cdk::storage::stable_restore();
+    if let Ok((legacy_data,)) = legacy_restore {
+        let mut migrated: HashMap<String, Vec<Step>> = HashMap::new();
+        for (k, v) in legacy_data.into_iter() {
+            let mut vec_new: Vec<Step> = Vec::new();
+            for s in v.into_iter() {
+                vec_new.push(Step {
+                    user_id: s.user_id.unwrap_or_else(|| "".to_string()),
+                    product_id: s.product_id,
+                    actor_name: s.actor_name,
+                    role: s.role,
+                    action: s.action,
+                    location: s.location,
+                    notes: s.notes,
+                    timestamp: s.timestamp,
+                    status: s.status,
+                    transport_mode: s.transport_mode,
+                    temperature_celsius: s.temperature_celsius,
+                    humidity_percent: s.humidity_percent,
+                    gps_latitude: s.gps_latitude,
+                    gps_longitude: s.gps_longitude,
+                    batch_number: s.batch_number,
+                    certification_hash: s.certification_hash,
+                    estimated_arrival: s.estimated_arrival,
+                    actual_arrival: s.actual_arrival,
+                    quality_score: s.quality_score,
+                    carbon_footprint_kg: s.carbon_footprint_kg,
+                    distance_km: s.distance_km,
+                    cost_usd: s.cost_usd,
+                    blockchain_hash: s.blockchain_hash,
+                });
+            }
+            migrated.insert(k, vec_new);
+        }
+
+        PRODUCT_HISTORY.with(|store| {
+            *store.borrow_mut() = migrated;
+        });
+
+        let product_count = PRODUCT_HISTORY.with(|store| store.borrow().len());
+        ic_cdk::println!("Enhanced BlockTrace backend upgraded - Restored {} products (migrated legacy data)", product_count);
+        return;
+    }
+
+    ic_cdk::println!("Enhanced BlockTrace backend upgraded - No previous data restored (fresh start)");
 }
 
 candid::export_service!();

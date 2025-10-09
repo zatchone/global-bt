@@ -76,12 +76,12 @@ const LandingPage = () => {
             BLOCKTRACE
           </div>
           <div className="hidden md:flex space-x-8 text-gray-300">
+            <button onClick={() => router.push('/pitch')} className="hover:text-white transition-colors bg-emerald-500/20 px-3 py-1 rounded-full font-semibold">Pitch</button>
             <button onClick={() => router.push('/about')} className="hover:text-white transition-colors">About</button>
             <button onClick={() => router.push('/features')} className="hover:text-white transition-colors">Features</button>
-            <button onClick={() => router.push('/pricing')} className="hover:text-white transition-colors font-semibold">Pricing</button>
+            <button onClick={() => router.push('/pricing')} className="hover:text-white transition-colors">Pricing</button>
             <button onClick={() => router.push('/demo')} className="hover:text-white transition-colors">Demo</button>
             <button onClick={() => router.push('/roadmap')} className="hover:text-white transition-colors">Roadmap</button>
-            <button onClick={() => router.push('/contact')} className="hover:text-white transition-colors">Contact</button>
           </div>
         </div>
         <button className="bg-white text-black px-6 py-2 rounded-full font-semibold hover:bg-gray-100 transition-colors">

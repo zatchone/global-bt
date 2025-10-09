@@ -58,23 +58,36 @@ class NFTClient {
     const canisterId =
       process.env.NEXT_PUBLIC_CANISTER_ID_NFT_BACKEND ||
       process.env.CANISTER_ID_NFT_BACKEND ||
-      "uzt4z-lp777-77774-qaabq-cai";
+      // Default to the newly deployed mainnet NFT canister
+      "mrxkb-rqaaa-aaaam-qd6kq-cai";
     this.canisterId = canisterId;
     this.host = process.env.NEXT_PUBLIC_DFX_NETWORK === 'local' 
       ? "http://127.0.0.1:8081" 
       : "https://ic0.app";
+    console.log(`NFTClient initialized - Host: ${this.host}, Canister: ${this.canisterId}`);
   }
 
   async connect() {
     if (this.connected && this.actor) return true;
     this.agent = new HttpAgent({ host: this.host });
-    await this.agent.fetchRootKey();
+    // Only fetch root key for local development where the replica root key is not the production one
+    if (this.host.includes('127.0.0.1') || process.env.NEXT_PUBLIC_DFX_NETWORK === 'local') {
+      try {
+        await this.agent.fetchRootKey();
+      } catch (e) {
+        console.warn('fetchRootKey failed (ignored in non-local env):', e);
+      }
+    }
     this.actor = Actor.createActor(nftIdlFactory, {
       agent: this.agent,
       canisterId: this.canisterId,
     }) as unknown as NFTService;
     this.connected = true;
     return true;
+  }
+
+  getConnectionStatus() {
+    return { connected: this.connected, canisterId: this.canisterId, host: this.host };
   }
 
   async mintSimple(metadata: Metadata) {

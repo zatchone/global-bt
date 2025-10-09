@@ -284,10 +284,28 @@ const PricingPage = () => {
       <div className="relative z-10 py-20 px-6 lg:px-8">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold text-white mb-4">Why BlockTrace Wins</h2>
+            <h2 className="text-4xl font-bold text-white mb-4">Why We're Making IBM Irrelevant</h2>
             <p className="text-xl text-gray-400">
-              Competitive advantages backed by ICP's unique capabilities
+              IBM built a $1M Ferrari. We built the $99 Toyota that 50,000 companies actually need.
             </p>
+            <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-2xl p-6 mt-8 max-w-4xl mx-auto">
+              <h3 className="text-xl font-bold text-emerald-400 mb-4">Judge Said: "IBM has a supply chain service. You expect to compete?"</h3>
+              <p className="text-gray-300 mb-4">We're not competing with IBM. We're creating the market they can't serve. Here's the brutal math:</p>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                <div className="bg-white/5 p-4 rounded-lg">
+                  <div className="font-semibold text-red-400 mb-2">IBM's Market</div>
+                  <div className="text-gray-400">200 Fortune 500 food companies at $1M+ each</div>
+                </div>
+                <div className="bg-white/5 p-4 rounded-lg">
+                  <div className="font-semibold text-emerald-400 mb-2">Our Market</div>
+                  <div className="text-gray-400">50,000+ companies across ALL industries at $99-999/month</div>
+                </div>
+                <div className="bg-white/5 p-4 rounded-lg">
+                  <div className="font-semibold text-blue-400 mb-2">The Reality</div>
+                  <div className="text-gray-400">99.8% of businesses can't afford IBM. We serve everyone else.</div>
+                </div>
+              </div>
+            </div>
           </div>
 
           <div className="overflow-x-auto">

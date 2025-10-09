@@ -122,12 +122,29 @@ const Home = () => {
       
       try {
         console.log('🔗 Loading real-time blockchain metrics...');
+        console.log('👤 User Principal:', userProfile.principal);
         
-        const [userProducts, totalSteps, esgScores] = await Promise.all([
+        const [userProducts, esgScores] = await Promise.all([
           icpService.getUserProducts(userProfile.principal),
-          icpService.getTotalStepsCount(),
           icpService.getUserESGScores(userProfile.principal)
         ]);
+
+        console.log('📦 User Products:', userProducts);
+        console.log('📊 ESG Scores:', esgScores);
+
+        // Calculate user-specific total steps by summing all steps from user's products
+        let userTotalSteps = 0;
+        for (const productId of userProducts) {
+          try {
+            const steps = await icpService.getProductHistory(productId, userProfile.principal);
+            console.log(`📋 Product ${productId} has ${steps.length} steps`);
+            userTotalSteps += steps.length;
+          } catch (error) {
+            console.error(`Error fetching steps for product ${productId}:`, error);
+          }
+        }
+
+        console.log('🔢 Total User Steps:', userTotalSteps);
 
         let totalCarbonSaved = 0;
         let totalDistance = 0;
@@ -190,7 +207,7 @@ const Home = () => {
 
         setRealTimeMetrics({
           totalProducts: userProducts.length,
-          totalSteps: Number(totalSteps),
+          totalSteps: userTotalSteps,
           totalCarbonSaved: Math.round(totalCarbonSaved * 100) / 100,
           totalDistance: Math.round(totalDistance),
           avgSustainabilityScore,
@@ -200,7 +217,7 @@ const Home = () => {
           totalCost: Math.round(totalCost * 100) / 100,
           avgTemperature,
           blockchainTransactions,
-          realTimeUpdates: userProducts.length + Number(totalSteps) + esgScores.length
+          realTimeUpdates: userProducts.length + userTotalSteps + esgScores.length
         });
 
         setLastUpdated(new Date());
@@ -221,17 +238,27 @@ const Home = () => {
     const interval = setInterval(async () => {
       if (userProfile && !metricsLoading) {
         try {
-          const [userProducts, totalSteps, esgScores] = await Promise.all([
+          const [userProducts, esgScores] = await Promise.all([
             icpService.getUserProducts(userProfile.principal),
-            icpService.getTotalStepsCount(),
             icpService.getUserESGScores(userProfile.principal)
           ]);
+
+          // Calculate user-specific total steps
+          let userTotalSteps = 0;
+          for (const productId of userProducts) {
+            try {
+              const steps = await icpService.getProductHistory(productId, userProfile.principal);
+              userTotalSteps += steps.length;
+            } catch (error) {
+              console.error(`Error fetching steps for product ${productId}:`, error);
+            }
+          }
           
           // Quick update without full recalculation
           setRealTimeMetrics(prev => ({
             ...prev,
             totalProducts: userProducts.length,
-            totalSteps: Number(totalSteps),
+            totalSteps: userTotalSteps,
             realTimeUpdates: prev.realTimeUpdates + 1
           }));
           
@@ -259,11 +286,21 @@ const Home = () => {
     setMetricsError('');
     
     try {
-      const [userProducts, totalSteps, esgScores] = await Promise.all([
+      const [userProducts, esgScores] = await Promise.all([
         icpService.getUserProducts(userProfile.principal),
-        icpService.getTotalStepsCount(),
         icpService.getUserESGScores(userProfile.principal)
       ]);
+
+      // Calculate user-specific total steps
+      let userTotalSteps = 0;
+      for (const productId of userProducts) {
+        try {
+          const steps = await icpService.getProductHistory(productId, userProfile.principal);
+          userTotalSteps += steps.length;
+        } catch (error) {
+          console.error(`Error fetching steps for product ${productId}:`, error);
+        }
+      }
 
       // Recalculate all metrics
       let totalCarbonSaved = 0;
@@ -281,7 +318,7 @@ const Home = () => {
       setRealTimeMetrics(prev => ({
         ...prev,
         totalProducts: userProducts.length,
-        totalSteps: Number(totalSteps),
+        totalSteps: userTotalSteps,
         totalCarbonSaved: Math.round(totalCarbonSaved * 100) / 100,
         totalDistance: Math.round(totalDistance),
         avgSustainabilityScore,
@@ -294,6 +331,19 @@ const Home = () => {
       setMetricsError('Failed to refresh blockchain metrics');
     } finally {
       setMetricsLoading(false);
+    }
+  };
+
+  const debugUserData = async () => {
+    if (!userProfile) return;
+    
+    try {
+      const debugInfo = await icpService.debugUserData(userProfile.principal);
+      console.log('🔍 Debug User Data:', debugInfo);
+      alert(`Debug Info:\n${debugInfo}`);
+    } catch (error) {
+      console.error('Error getting debug data:', error);
+      alert('Failed to get debug data');
     }
   };
 
@@ -507,6 +557,13 @@ const Home = () => {
                 >
                   <RefreshCw className={`w-4 h-4 ${metricsLoading ? 'animate-spin' : ''}`} />
                   {metricsLoading ? 'Refreshing...' : 'Refresh'}
+                </button>
+                <button
+                  onClick={debugUserData}
+                  className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-orange-500 to-red-500 rounded-lg font-medium text-sm hover:shadow-lg transition-all"
+                >
+                  <Info className="w-4 h-4" />
+                  Debug Data
                 </button>
               </div>
             </div>

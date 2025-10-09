@@ -253,14 +253,18 @@ export default function AddStepPage() {
 
     if (!formData.acceptTerms)
       return setErrorMessage("❗ Accept terms to continue");
-    if (
-      !formData.productId ||
-      !formData.actorName ||
-      !formData.actorRole ||
-      !formData.action ||
-      !formData.location
-    )
-      return setErrorMessage("❗ Fill all required fields");
+
+    // When advanced mode is enabled, allow flexible submissions and skip the basic required-fields enforcement.
+    if (!isAdvancedMode) {
+      if (
+        !formData.productId ||
+        !formData.actorName ||
+        !formData.actorRole ||
+        !formData.action ||
+        !formData.location
+      )
+        return setErrorMessage("❗ Fill all required fields");
+    }
     if (!isConnected)
       return setErrorMessage("❗ Not connected — please refresh");
 
@@ -1049,7 +1053,7 @@ export default function AddStepPage() {
       </main>
 
       {/* CSS animations */}
-      <style jsx>{`
+      <style>{`
         @keyframes float {
           0%,
           100% {

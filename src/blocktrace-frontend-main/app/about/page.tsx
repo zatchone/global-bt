@@ -65,7 +65,14 @@ const AboutPage = () => {
                 <span className="text-4xl font-bold text-white">YS</span>
               </div>
               <h2 className="text-3xl font-bold text-white mb-4">Yashasvi Sharma</h2>
-              <p className="text-emerald-400 text-lg">Founder & Visionary</p>
+              <p className="text-emerald-400 text-lg mb-2">Founder & CEO</p>
+              <p className="text-gray-400 mb-4">New Delhi, India | theobsydeon@gmail.com</p>
+              <div className="flex flex-wrap justify-center gap-2 mb-6">
+                <span className="px-3 py-1 bg-emerald-500/20 text-emerald-400 rounded-full text-sm">ICP Expert</span>
+                <span className="px-3 py-1 bg-blue-500/20 text-blue-400 rounded-full text-sm">Full-Stack Developer</span>
+                <span className="px-3 py-1 bg-purple-500/20 text-purple-400 rounded-full text-sm">Blockchain Architect</span>
+                <span className="px-3 py-1 bg-orange-500/20 text-orange-400 rounded-full text-sm">WCHL25 Participant</span>
+              </div>
             </div>
 
             <div className="space-y-8 text-gray-300 text-lg leading-relaxed">

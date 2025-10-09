@@ -27,6 +27,36 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
+        {/* Global error capture script - logs uncaught errors with stack and source to help diagnose asm.js failures */}
+        <script dangerouslySetInnerHTML={{ __html: `
+          (function(){
+            function pushLog(obj){
+              try{
+                const key='bt_error_log';
+                const prev=localStorage.getItem(key);
+                const arr=prev?JSON.parse(prev):[];
+                arr.push({ts:Date.now(),payload:obj});
+                // keep only last 200 entries
+                if(arr.length>200) arr.splice(0, arr.length-200);
+                localStorage.setItem(key, JSON.stringify(arr));
+              }catch(e){console.warn('bt log store failed',e)}
+            }
+            window.addEventListener('error', function(e) {
+              try {
+                const info={message:e.message, filename:e.filename, lineno:e.lineno, colno:e.colno, stack: e.error && e.error.stack};
+                console.error('GlobalErrorCaptured:', info);
+                pushLog({type:'error',info});
+              } catch(err) { console.error('Error in global error handler', err); }
+            }, true);
+            window.addEventListener('unhandledrejection', function(evt) {
+              try {
+                const info={reason: evt.reason && (evt.reason.stack || evt.reason)};
+                console.error('UnhandledRejection:', info);
+                pushLog({type:'unhandledrejection',info});
+              } catch(err) { console.error('Error in rejection handler', err); }
+            });
+          })();
+        `}} />
         {children}
       </body>
     </html>

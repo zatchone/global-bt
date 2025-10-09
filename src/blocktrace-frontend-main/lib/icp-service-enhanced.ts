@@ -116,9 +116,10 @@ class EnhancedICPService {
 
   constructor() {
     this.canisterId = this.getCanisterId();
-    this.host = "http://127.0.0.1:8081";
-    
-    console.log(`Enhanced ICP Service initialized - Host: ${this.host}, Canister ID: ${this.canisterId}`);
+    const network = process.env.NEXT_PUBLIC_DFX_NETWORK || 'local';
+    this.host = network === 'ic' ? "https://ic0.app" : "http://127.0.0.1:8081";
+
+    console.log(`Enhanced ICP Service initialized - Network: ${network}, Host: ${this.host}, Canister ID: ${this.canisterId}`);
   }
 
   private getCanisterId(): string {
@@ -147,8 +148,15 @@ class EnhancedICPService {
         host: this.host
       });
 
-      console.log("Fetching root key for local development...");
-      await this.agent.fetchRootKey();
+      // Only fetch root key when running against a local replica for development
+      if (this.host.includes('127.0.0.1') || process.env.NEXT_PUBLIC_DFX_NETWORK !== 'ic') {
+        try {
+          console.log("Fetching root key for local development...");
+          await this.agent.fetchRootKey();
+        } catch (e) {
+          console.warn('fetchRootKey failed (ignored in non-local env):', e);
+        }
+      }
 
       this.actor = Actor.createActor(enhancedIdlFactory, {
         agent: this.agent,
